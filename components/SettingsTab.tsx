@@ -317,12 +317,14 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
             onClick={() =>
               updateSetting("enablePushNotifications", !settings.enablePushNotifications)
             }
+            suppressHydrationWarning
             className={cn(
               "relative w-14 h-8 rounded-full transition-colors",
               settings.enablePushNotifications ? "bg-primary" : "bg-muted"
             )}
           >
             <div
+              suppressHydrationWarning
               className={cn(
                 "absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform",
                 settings.enablePushNotifications ? "translate-x-7" : "translate-x-1"

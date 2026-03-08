@@ -17,27 +17,29 @@ export default function Home() {
   const [schedule, setSchedule] = useState<ScheduleRule[]>([]);
   const [isAutoMode, setIsAutoMode] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("camera");
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // App Settings State - Load from LocalStorage if available
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    if (typeof window === "undefined") {
-      return {
-        storageType: "local",
-        isGoogleAuthenticated: false,
-        isDockerAuthenticated: false,
-        isGithubAuthenticated: false,
-        notificationEmail: "",
-        enablePushNotifications: false,
-        videoQuality: "medium",
-        preRecordDuration: 5,
-        postRecordDuration: 5,
-        detectionThreshold: 0.7,
-        cameraSource: "webcam",
-        ipCameraUrl: "",
-        ipCameraType: "mjpeg",
-      };
-    }
+  // Default settings
+  const defaultSettings: AppSettings = {
+    storageType: "local",
+    isGoogleAuthenticated: false,
+    isDockerAuthenticated: false,
+    isGithubAuthenticated: false,
+    notificationEmail: "",
+    enablePushNotifications: false,
+    videoQuality: "medium",
+    preRecordDuration: 5,
+    postRecordDuration: 5,
+    detectionThreshold: 0.7,
+    cameraSource: "webcam",
+    ipCameraUrl: "",
+    ipCameraType: "mjpeg",
+  };
 
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+
+  // Load settings from localStorage after hydration
+  useEffect(() => {
     try {
       const saved = localStorage.getItem("appSettings");
       if (saved) {
@@ -59,28 +61,13 @@ export default function Home() {
         // Camera source migration
         if (!parsed.cameraSource) parsed.cameraSource = "webcam";
         if (!parsed.ipCameraType) parsed.ipCameraType = "mjpeg";
-        return parsed;
+        setSettings(parsed);
       }
     } catch (e) {
       console.error("Failed to load settings", e);
     }
-
-    return {
-      storageType: "local",
-      isGoogleAuthenticated: false,
-      isDockerAuthenticated: false,
-      isGithubAuthenticated: false,
-      notificationEmail: "",
-      enablePushNotifications: false,
-      videoQuality: "medium",
-      preRecordDuration: 5,
-      postRecordDuration: 5,
-      detectionThreshold: 0.7,
-      cameraSource: "webcam",
-      ipCameraUrl: "",
-      ipCameraType: "mjpeg",
-    };
-  });
+    setIsHydrated(true);
+  }, []);
 
   const handleNewClip = (clip: RecordedClip) => {
     setClips((prev) => [clip, ...prev]);
