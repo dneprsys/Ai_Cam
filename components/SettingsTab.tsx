@@ -16,6 +16,12 @@ import {
   Gauge,
   Camera,
   Link,
+  Server,
+  Power,
+  PowerOff,
+  Loader2,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 interface SettingsTabProps {
@@ -24,6 +30,9 @@ interface SettingsTabProps {
 }
 
 const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
+  const [mediaMtxStatus, setMediaMtxStatus] = React.useState<'unknown' | 'checking' | 'running' | 'stopped' | 'error'>('unknown');
+  const [mediaMtxLoading, setMediaMtxLoading] = React.useState(false);
+
   // Save to localStorage whenever settings change
   useEffect(() => {
     try {
@@ -32,6 +41,59 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
       console.error("Failed to save settings", e);
     }
   }, [settings]);
+
+  // Check MediaMTX status
+  const checkMediaMtxStatus = React.useCallback(async () => {
+    if (!settings.mediaMtxHost) return;
+    
+    setMediaMtxStatus('checking');
+    try {
+      const port = settings.mediaMtxApiPort || 9997;
+      const response = await fetch(`http://${settings.mediaMtxHost}:${port}/v3/paths/list`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(3000),
+      });
+      
+      if (response.ok) {
+        setMediaMtxStatus('running');
+      } else {
+        setMediaMtxStatus('stopped');
+      }
+    } catch {
+      setMediaMtxStatus('stopped');
+    }
+  }, [settings.mediaMtxHost, settings.mediaMtxApiPort]);
+
+  // Check status when MediaMTX settings change
+  useEffect(() => {
+    if (settings.mediaMtxEnabled && settings.mediaMtxHost) {
+      checkMediaMtxStatus();
+    }
+  }, [settings.mediaMtxEnabled, settings.mediaMtxHost, checkMediaMtxStatus]);
+
+  // Toggle MediaMTX (sends command to the server)
+  const toggleMediaMtx = async (enable: boolean) => {
+    if (!settings.mediaMtxHost) return;
+    
+    setMediaMtxLoading(true);
+    try {
+      // This would typically call your backend API that controls MediaMTX via SSH or systemctl
+      // For now, we just update the setting and check status
+      updateSetting('mediaMtxEnabled', enable);
+      
+      // In production, you would call:
+      // await fetch('/api/mediamtx/control', { method: 'POST', body: JSON.stringify({ action: enable ? 'start' : 'stop' }) });
+      
+      // Wait a moment then check status
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await checkMediaMtxStatus();
+    } catch (error) {
+      console.error('Failed to toggle MediaMTX:', error);
+      setMediaMtxStatus('error');
+    } finally {
+      setMediaMtxLoading(false);
+    }
+  };
 
   const updateSetting = <K extends keyof AppSettings>(
     key: K,
@@ -67,6 +129,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
       cameraSource: "webcam",
       ipCameraUrl: "",
       ipCameraType: "mjpeg",
+      mediaMtxEnabled: false,
+      mediaMtxHost: "",
+      mediaMtxApiPort: 9997,
+      mediaMtxStreamName: "camera1",
     };
     setSettings(defaultSettings);
   };
@@ -145,6 +211,146 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
             </div>
           </div>
         )}
+      </section>
+
+      {/* MediaMTX Settings */}
+      <section className="p-4 bg-secondary rounded-lg space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
+          <Server className="w-5 h-5 text-primary" />
+          MediaMTX Медиа-сервер
+        </h3>
+
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="font-medium">MediaMTX</p>
+            <p className="text-sm text-muted-foreground">
+              Конвертация RTSP в HLS для браузера
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Status indicator */}
+            <div className="flex items-center gap-1.5">
+              {mediaMtxStatus === 'checking' && (
+                <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+              )}
+              {mediaMtxStatus === 'running' && (
+                <CheckCircle className="w-4 h-4 text-green-500" />
+              )}
+              {mediaMtxStatus === 'stopped' && (
+                <XCircle className="w-4 h-4 text-red-500" />
+              )}
+              {mediaMtxStatus === 'error' && (
+                <XCircle className="w-4 h-4 text-orange-500" />
+              )}
+              <span className="text-xs text-muted-foreground">
+                {mediaMtxStatus === 'checking' && 'Проверка...'}
+                {mediaMtxStatus === 'running' && 'Работает'}
+                {mediaMtxStatus === 'stopped' && 'Остановлен'}
+                {mediaMtxStatus === 'error' && 'Ошибка'}
+                {mediaMtxStatus === 'unknown' && ''}
+              </span>
+            </div>
+            
+            {/* Toggle button */}
+            <button
+              onClick={() => toggleMediaMtx(!settings.mediaMtxEnabled)}
+              disabled={mediaMtxLoading || !settings.mediaMtxHost}
+              suppressHydrationWarning
+              className={cn(
+                "relative w-14 h-8 rounded-full transition-colors disabled:opacity-50",
+                settings.mediaMtxEnabled ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <div
+                suppressHydrationWarning
+                className={cn(
+                  "absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform flex items-center justify-center",
+                  settings.mediaMtxEnabled ? "translate-x-7" : "translate-x-1"
+                )}
+              >
+                {mediaMtxLoading ? (
+                  <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />
+                ) : settings.mediaMtxEnabled ? (
+                  <Power className="w-3 h-3 text-green-600" />
+                ) : (
+                  <PowerOff className="w-3 h-3 text-muted-foreground" />
+                )}
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* MediaMTX Configuration */}
+        <div className="space-y-3 pt-2 border-t border-border">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                Хост MediaMTX
+              </label>
+              <input
+                type="text"
+                value={settings.mediaMtxHost || ""}
+                onChange={(e) => updateSetting("mediaMtxHost", e.target.value)}
+                placeholder="192.168.0.100 или localhost"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                API порт
+              </label>
+              <input
+                type="number"
+                value={settings.mediaMtxApiPort || 9997}
+                onChange={(e) => updateSetting("mediaMtxApiPort", parseInt(e.target.value) || 9997)}
+                placeholder="9997"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-muted-foreground mb-1">
+              Имя потока
+            </label>
+            <input
+              type="text"
+              value={settings.mediaMtxStreamName || ""}
+              onChange={(e) => updateSetting("mediaMtxStreamName", e.target.value)}
+              placeholder="camera1"
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+            />
+          </div>
+
+          {settings.mediaMtxHost && settings.mediaMtxStreamName && (
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground mb-1">HLS URL для приложения:</p>
+              <code className="text-xs font-mono text-primary break-all">
+                http://{settings.mediaMtxHost}:8888/{settings.mediaMtxStreamName}/index.m3u8
+              </code>
+              <button
+                onClick={() => {
+                  const hlsUrl = `http://${settings.mediaMtxHost}:8888/${settings.mediaMtxStreamName}/index.m3u8`;
+                  updateSetting("ipCameraUrl", hlsUrl);
+                  updateSetting("ipCameraType", "hls");
+                  updateSetting("cameraSource", "ip");
+                }}
+                className="mt-2 w-full px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary/90 transition"
+              >
+                Применить URL к камере
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={checkMediaMtxStatus}
+            disabled={!settings.mediaMtxHost || mediaMtxStatus === 'checking'}
+            className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", mediaMtxStatus === 'checking' && "animate-spin")} />
+            Проверить статус
+          </button>
+        </div>
       </section>
 
       {/* Video Settings */}

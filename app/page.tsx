@@ -34,6 +34,10 @@ export default function Home() {
     cameraSource: "webcam",
     ipCameraUrl: "",
     ipCameraType: "mjpeg",
+    mediaMtxEnabled: false,
+    mediaMtxHost: "",
+    mediaMtxApiPort: 9997,
+    mediaMtxStreamName: "camera1",
   };
 
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
@@ -61,6 +65,10 @@ export default function Home() {
         // Camera source migration
         if (!parsed.cameraSource) parsed.cameraSource = "webcam";
         if (!parsed.ipCameraType) parsed.ipCameraType = "mjpeg";
+        // MediaMTX migration
+        if (parsed.mediaMtxEnabled === undefined) parsed.mediaMtxEnabled = false;
+        if (!parsed.mediaMtxApiPort) parsed.mediaMtxApiPort = 9997;
+        if (!parsed.mediaMtxStreamName) parsed.mediaMtxStreamName = "camera1";
         setSettings(parsed);
       }
     } catch (e) {

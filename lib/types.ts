@@ -50,6 +50,11 @@ export interface AppSettings {
   cameraSource: 'webcam' | 'ip';
   ipCameraUrl?: string;
   ipCameraType?: 'rtsp' | 'hls' | 'mjpeg';
+  // MediaMTX settings
+  mediaMtxEnabled?: boolean;
+  mediaMtxHost?: string;
+  mediaMtxApiPort?: number;
+  mediaMtxStreamName?: string;
 }
 
 export interface DetectionResult {
