@@ -46,6 +46,10 @@ export interface AppSettings {
   preRecordDuration: number;
   postRecordDuration: number;
   detectionThreshold: number;
+  // Camera source settings
+  cameraSource: 'webcam' | 'ip';
+  ipCameraUrl?: string;
+  ipCameraType?: 'rtsp' | 'hls' | 'mjpeg';
 }
 
 export interface DetectionResult {

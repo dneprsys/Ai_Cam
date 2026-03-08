@@ -14,6 +14,8 @@ import {
   RefreshCw,
   Settings,
   Gauge,
+  Camera,
+  Link,
 } from "lucide-react";
 
 interface SettingsTabProps {
@@ -62,12 +64,89 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
       preRecordDuration: 5,
       postRecordDuration: 5,
       detectionThreshold: 0.7,
+      cameraSource: "webcam",
+      ipCameraUrl: "",
+      ipCameraType: "mjpeg",
     };
     setSettings(defaultSettings);
   };
 
+  const cameraSourceOptions: { value: 'webcam' | 'ip'; label: string; icon: React.ReactNode }[] = [
+    { value: "webcam", label: "Веб-камера", icon: <Camera className="w-5 h-5" /> },
+    { value: "ip", label: "IP/RTSP камера", icon: <Link className="w-5 h-5" /> },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Camera Source */}
+      <section className="p-4 bg-secondary rounded-lg space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
+          <Camera className="w-5 h-5 text-primary" />
+          Источник камеры
+        </h3>
+
+        <div className="grid grid-cols-2 gap-2">
+          {cameraSourceOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => updateSetting("cameraSource", option.value)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition",
+                settings.cameraSource === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {option.icon}
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {settings.cameraSource === "ip" && (
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">
+                URL камеры
+              </label>
+              <input
+                type="text"
+                value={settings.ipCameraUrl || ""}
+                onChange={(e) => updateSetting("ipCameraUrl", e.target.value)}
+                placeholder="rtsp://192.168.0.203 или http://192.168.0.203/video"
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-2">
+                Тип потока
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["mjpeg", "hls", "rtsp"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => updateSetting("ipCameraType", type)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg text-sm font-medium transition uppercase",
+                      settings.ipCameraType === type
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {settings.ipCameraType === "mjpeg" && "MJPEG - Motion JPEG поток (большинство IP камер поддерживают)"}
+                {settings.ipCameraType === "hls" && "HLS - HTTP Live Streaming (если камера конвертирует RTSP в HLS)"}
+                {settings.ipCameraType === "rtsp" && "RTSP - требует медиа-сервер для конвертации (MediaMTX, ffmpeg)"}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Video Settings */}
       <section className="p-4 bg-secondary rounded-lg space-y-4">
         <h3 className="font-medium flex items-center gap-2">

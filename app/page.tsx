@@ -32,6 +32,9 @@ export default function Home() {
         preRecordDuration: 5,
         postRecordDuration: 5,
         detectionThreshold: 0.7,
+        cameraSource: "webcam",
+        ipCameraUrl: "",
+        ipCameraType: "mjpeg",
       };
     }
 
@@ -53,6 +56,9 @@ export default function Home() {
         ) {
           parsed.detectionThreshold = 0.7;
         }
+        // Camera source migration
+        if (!parsed.cameraSource) parsed.cameraSource = "webcam";
+        if (!parsed.ipCameraType) parsed.ipCameraType = "mjpeg";
         return parsed;
       }
     } catch (e) {
@@ -70,6 +76,9 @@ export default function Home() {
       preRecordDuration: 5,
       postRecordDuration: 5,
       detectionThreshold: 0.7,
+      cameraSource: "webcam",
+      ipCameraUrl: "",
+      ipCameraType: "mjpeg",
     };
   });
 
