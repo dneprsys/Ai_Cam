@@ -1,0 +1,85 @@
+###############################################
+# MediaMTX Configuration for AI Security Cam
+###############################################
+
+# General settings
+logLevel: info
+logDestinations: [stdout]
+
+# API (for status and control)
+api: yes
+apiAddress: :9997
+
+# RTSP server settings
+rtsp: yes
+rtspAddress: :8554
+protocols: [tcp, udp]
+rtspRangeType: clock
+
+# RTMP server (optional, for streaming software)
+rtmp: yes
+rtmpAddress: :1935
+
+# HLS server (for browser playback)
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: yes
+hlsSegmentCount: 3
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 50M
+hlsAllowOrigin: '*'
+
+# WebRTC server (low latency browser playback)
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowOrigin: '*'
+webrtcICEServers2: []
+# Add your local network for WebRTC
+webrtcAdditionalHosts: [192.168.0.0/16]
+
+# SRT server (optional)
+srt: yes
+srtAddress: :8890
+
+###############################################
+# Camera Paths Configuration
+###############################################
+
+paths:
+  # Main camera - connects to your RTSP camera
+  camera1:
+    # Source: your IP camera RTSP URL
+    # Update this with your actual camera URL and credentials
+    source: rtsp://192.168.0.203:554/stream
+    # Alternative formats your camera might use:
+    # source: rtsp://192.168.0.203:554/Streaming/Channels/101
+    # source: rtsp://admin:password@192.168.0.203:554/stream
+    # source: rtsp://192.168.0.203:554/h264
+    
+    # RTSP transport (tcp is more reliable)
+    sourceProtocol: tcp
+    
+    # Keep stream running even without viewers
+    sourceOnDemand: no
+    
+    # Reconnect settings
+    sourceOnDemandStartTimeout: 10s
+    sourceOnDemandCloseAfter: 10s
+
+  # Example: Second camera
+  # camera2:
+  #   source: rtsp://192.168.0.204:554/stream
+  #   sourceProtocol: tcp
+  #   sourceOnDemand: no
+
+  # Proxy any RTSP stream (wildcard path)
+  # Allows: rtsp://mediamtx:8554/proxy/192.168.0.203/stream
+  # proxy~^proxy/(.+)$:
+  #   source: rtsp://$1
+  #   sourceProtocol: tcp
+  #   sourceOnDemand: yes
+
+  # For re-publishing streams from other sources
+  all_others:
+    # Allow any stream to be published

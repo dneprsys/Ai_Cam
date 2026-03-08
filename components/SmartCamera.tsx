@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import Hls from "hls.js";
 import { CameraStatus, RecordedClip, ScheduleRule, AppSettings, DetectionResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Camera, Video, VideoOff, AlertCircle, Loader2, Eye, Play, Square, Settings2, Link, Wifi, WifiOff } from "lucide-react";
@@ -36,6 +37,7 @@ const SmartCamera: React.FC<SmartCameraProps> = ({
   const [ipStreamError, setIpStreamError] = useState(false);
 
   const imgRef = useRef<HTMLImageElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   // Load COCO-SSD model
   const loadModel = useCallback(async () => {
@@ -72,13 +74,54 @@ const SmartCamera: React.FC<SmartCameraProps> = ({
           await loadModel();
           startDetectionFromImg();
         } else if (settings.ipCameraType === 'hls') {
-          if (videoRef.current) {
-            videoRef.current.src = settings.ipCameraUrl;
-            await videoRef.current.play();
+          if (videoRef.current && settings.ipCameraUrl) {
+            // Cleanup previous HLS instance
+            if (hlsRef.current) {
+              hlsRef.current.destroy();
+              hlsRef.current = null;
+            }
+
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90,
+              });
+              hlsRef.current = hls;
+              
+              hls.loadSource(settings.ipCameraUrl);
+              hls.attachMedia(videoRef.current);
+              
+              hls.on(Hls.Events.MANIFEST_PARSED, async () => {
+                try {
+                  await videoRef.current?.play();
+                  setStatus(CameraStatus.WATCHING);
+                  await loadModel();
+                  startDetection();
+                } catch (err) {
+                  console.error("[v0] HLS play error:", err);
+                }
+              });
+
+              hls.on(Hls.Events.ERROR, (event, data) => {
+                console.error("[v0] HLS error:", data);
+                if (data.fatal) {
+                  setError(`HLS ошибка: ${data.type}`);
+                  setStatus(CameraStatus.ERROR);
+                }
+              });
+            } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+              // Safari native HLS support
+              videoRef.current.src = settings.ipCameraUrl;
+              await videoRef.current.play();
+              setStatus(CameraStatus.WATCHING);
+              await loadModel();
+              startDetection();
+            } else {
+              setError("Ваш браузер не поддерживает HLS потоки");
+              setStatus(CameraStatus.ERROR);
+            }
           }
-          setStatus(CameraStatus.WATCHING);
-          await loadModel();
-          startDetection();
         } else {
           // RTSP needs conversion - show instructions
           setError("RTSP потоки не поддерживаются напрямую в браузере. Используйте MediaMTX для конвертации в HLS или MJPEG.");
@@ -128,6 +171,11 @@ const SmartCamera: React.FC<SmartCameraProps> = ({
       detectionIntervalRef.current = null;
     }
 
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -135,10 +183,12 @@ const SmartCamera: React.FC<SmartCameraProps> = ({
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+      videoRef.current.src = "";
     }
 
     setStatus(CameraStatus.IDLE);
     setDetections([]);
+    setIpStreamError(false);
   }, []);
 
   // Object detection loop for MJPEG (img element)
