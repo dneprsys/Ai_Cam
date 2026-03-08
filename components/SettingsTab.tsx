@@ -32,6 +32,8 @@ interface SettingsTabProps {
 const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
   const [mediaMtxStatus, setMediaMtxStatus] = React.useState<'unknown' | 'checking' | 'running' | 'stopped' | 'error'>('unknown');
   const [mediaMtxLoading, setMediaMtxLoading] = React.useState(false);
+  const [telegramTestStatus, setTelegramTestStatus] = React.useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [telegramTestMessage, setTelegramTestMessage] = React.useState('');
 
   // Save to localStorage whenever settings change
   useEffect(() => {
@@ -100,6 +102,51 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
     value: AppSettings[K]
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // Send test message to Telegram
+  const sendTelegramTestMessage = async () => {
+    if (!settings.telegramBotToken || !settings.telegramChatId) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Укажите Bot Token и Chat ID');
+      return;
+    }
+
+    setTelegramTestStatus('sending');
+    setTelegramTestMessage('');
+
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${settings.telegramBotToken}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: settings.telegramChatId,
+          text: `AI Security Cam - Тестовое сообщение\n\nВаши настройки Telegram работают корректно.\nДата: ${new Date().toLocaleString('ru-RU')}`,
+          parse_mode: 'HTML',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        setTelegramTestStatus('success');
+        setTelegramTestMessage('Сообщение успешно отправлено!');
+      } else {
+        setTelegramTestStatus('error');
+        setTelegramTestMessage(data.description || 'Ошибка отправки');
+      }
+    } catch (error) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Ошибка сети. Проверьте подключение.');
+    }
+
+    // Reset status after 5 seconds
+    setTimeout(() => {
+      setTelegramTestStatus('idle');
+      setTelegramTestMessage('');
+    }, 5000);
   };
 
   const qualityLabels: Record<VideoQuality, string> = {
@@ -500,6 +547,53 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
                 placeholder="294782364"
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
+            </div>
+            
+            {/* Test Telegram Button */}
+            <div className="pt-2">
+              <button
+                onClick={sendTelegramTestMessage}
+                disabled={telegramTestStatus === 'sending' || !settings.telegramBotToken || !settings.telegramChatId}
+                className={cn(
+                  "flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium transition",
+                  telegramTestStatus === 'success' 
+                    ? "bg-green-600 text-white"
+                    : telegramTestStatus === 'error'
+                    ? "bg-red-600 text-white"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {telegramTestStatus === 'sending' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Отправка...
+                  </>
+                ) : telegramTestStatus === 'success' ? (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Отправлено!
+                  </>
+                ) : telegramTestStatus === 'error' ? (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Ошибка
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Отправить тестовое сообщение
+                  </>
+                )}
+              </button>
+              {telegramTestMessage && (
+                <p className={cn(
+                  "text-xs mt-2 text-center",
+                  telegramTestStatus === 'success' ? "text-green-600" : "text-red-500"
+                )}>
+                  {telegramTestMessage}
+                </p>
+              )}
             </div>
           </div>
         )}
