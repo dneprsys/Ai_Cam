@@ -267,64 +267,78 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ settings, setSettings }) => {
           MediaMTX Медиа-сервер
         </h3>
 
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="font-medium">MediaMTX</p>
-            <p className="text-sm text-muted-foreground">
-              Конвертация RTSP в HLS для браузера
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Status indicator */}
-            <div className="flex items-center gap-1.5">
-              {mediaMtxStatus === 'checking' && (
-                <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
-              )}
-              {mediaMtxStatus === 'running' && (
-                <CheckCircle className="w-4 h-4 text-green-500" />
-              )}
-              {mediaMtxStatus === 'stopped' && (
-                <XCircle className="w-4 h-4 text-red-500" />
-              )}
-              {mediaMtxStatus === 'error' && (
-                <XCircle className="w-4 h-4 text-orange-500" />
-              )}
-              <span className="text-xs text-muted-foreground">
+        {/* Status indicator */}
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+          <div className="flex items-center gap-2 flex-1">
+            {mediaMtxStatus === 'checking' && (
+              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+            )}
+            {mediaMtxStatus === 'running' && (
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            )}
+            {mediaMtxStatus === 'stopped' && (
+              <XCircle className="w-5 h-5 text-red-500" />
+            )}
+            {mediaMtxStatus === 'error' && (
+              <XCircle className="w-5 h-5 text-orange-500" />
+            )}
+            {mediaMtxStatus === 'unknown' && (
+              <Server className="w-5 h-5 text-muted-foreground" />
+            )}
+            <div>
+              <p className="font-medium text-sm">
                 {mediaMtxStatus === 'checking' && 'Проверка...'}
-                {mediaMtxStatus === 'running' && 'Работает'}
-                {mediaMtxStatus === 'stopped' && 'Остановлен'}
-                {mediaMtxStatus === 'error' && 'Ошибка'}
-                {mediaMtxStatus === 'unknown' && ''}
-              </span>
+                {mediaMtxStatus === 'running' && 'Сервер работает'}
+                {mediaMtxStatus === 'stopped' && 'Сервер остановлен'}
+                {mediaMtxStatus === 'error' && 'Ошибка подключения'}
+                {mediaMtxStatus === 'unknown' && 'Статус неизвестен'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {settings.mediaMtxHost ? `${settings.mediaMtxHost}:${settings.mediaMtxApiPort || 9997}` : 'Укажите хост'}
+              </p>
             </div>
-            
-            {/* Toggle button */}
-            <button
-              onClick={() => toggleMediaMtx(!settings.mediaMtxEnabled)}
-              disabled={mediaMtxLoading || !settings.mediaMtxHost}
-              suppressHydrationWarning
-              className={cn(
-                "relative w-14 h-8 rounded-full transition-colors disabled:opacity-50",
-                settings.mediaMtxEnabled ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <div
-                suppressHydrationWarning
-                className={cn(
-                  "absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform flex items-center justify-center",
-                  settings.mediaMtxEnabled ? "translate-x-7" : "translate-x-1"
-                )}
-              >
-                {mediaMtxLoading ? (
-                  <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />
-                ) : settings.mediaMtxEnabled ? (
-                  <Power className="w-3 h-3 text-green-600" />
-                ) : (
-                  <PowerOff className="w-3 h-3 text-muted-foreground" />
-                )}
-              </div>
-            </button>
           </div>
+        </div>
+
+        {/* Control buttons */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => toggleMediaMtx(true)}
+            disabled={mediaMtxLoading || !settings.mediaMtxHost || mediaMtxStatus === 'running'}
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition",
+              mediaMtxStatus === 'running'
+                ? "bg-green-600/20 text-green-600 cursor-not-allowed"
+                : "bg-green-600 text-white hover:bg-green-700",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            {mediaMtxLoading && !settings.mediaMtxEnabled ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Power className="w-4 h-4" />
+            )}
+            Включить сервер
+          </button>
+          
+          <button
+            onClick={() => toggleMediaMtx(false)}
+            disabled={mediaMtxLoading || !settings.mediaMtxHost || mediaMtxStatus === 'stopped' || mediaMtxStatus === 'unknown'}
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition",
+              mediaMtxStatus === 'stopped' || mediaMtxStatus === 'unknown'
+                ? "bg-red-600/20 text-red-600 cursor-not-allowed"
+                : "bg-red-600 text-white hover:bg-red-700",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+          >
+            {mediaMtxLoading && settings.mediaMtxEnabled ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <PowerOff className="w-4 h-4" />
+            )}
+            Выключить сервер
+          </button>
         </div>
 
         {/* MediaMTX Configuration */}
